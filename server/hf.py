@@ -7,9 +7,11 @@ report downloaded. Set HF_TOKEN for private repos.
 
 import json
 import os
+import threading
 from pathlib import Path
 
 import httpx
+import yaml
 
 HF_REPO = os.environ.get("AO_HF_REPO", "model-organisms-for-real/oracle-results")
 CACHE_DIR = Path(os.environ.get("AO_CACHE_DIR", str(Path.home() / ".cache" / "ao-visualizer")))
@@ -42,6 +44,33 @@ def branch_sha(branch: str) -> str:
 
 def _cache_path(branch: str, sha: str) -> Path:
     return CACHE_DIR / f"{HF_REPO.replace('/', '__')}__{branch}@{sha}.json"
+
+
+_tags_cache: dict[str, tuple[str, list[str]]] = {}  # branch -> (sha, tags)
+_tags_lock = threading.Lock()
+
+
+def branch_tags(branch: str, sha: str) -> list[str]:
+    """Tags from the branch's run_config.yaml (a few KB), cached per sha."""
+    with _tags_lock:
+        hit = _tags_cache.get(branch)
+        if hit and hit[0] == sha:
+            return hit[1]
+    tags: list[str] = []
+    try:
+        r = httpx.get(
+            f"https://huggingface.co/datasets/{HF_REPO}/resolve/{branch}/run_config.yaml",
+            headers=_headers(), timeout=30, follow_redirects=True,
+        )
+        if r.status_code == 200:
+            raw = yaml.safe_load(r.text)
+            if isinstance(raw, dict):
+                tags = [str(t) for t in raw.get("tags") or []]
+    except (httpx.HTTPError, yaml.YAMLError):
+        pass  # no tags is fine; retried on next sha change
+    with _tags_lock:
+        _tags_cache[branch] = (sha, tags)
+    return tags
 
 
 def fetch_report(branch: str, sha: str) -> dict:

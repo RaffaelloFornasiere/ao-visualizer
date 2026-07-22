@@ -89,6 +89,7 @@ def summary(entry: dict) -> dict:
     return {
         "run_name": report.get("run_name", ""),
         "hf_repo": report.get("hf_repo", ""),
+        "tags": [str(t) for t in cfg.get("tags") or []],
         "sha": entry["sha"],
         "repo_commit": report.get("repo_commit"),
         "schema_version": report.get("schema_version"),

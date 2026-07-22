@@ -184,6 +184,17 @@ tr.section-row td {
   display: flex; justify-content: space-between; align-items: center; gap: 1rem;
 }
 .branch-list .sha { color: var(--muted); font-size: 0.78rem; }
+.tag-pill {
+  display: inline-block; margin-left: 0.45rem; padding: 0.02rem 0.5rem;
+  border-radius: 999px; background: var(--accent-soft); color: var(--text);
+  font-size: 0.72rem;
+}
+.search {
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 0.3rem 0.7rem; font-size: 0.85rem; min-width: 16rem;
+}
+.search:focus { outline: 1.5px solid var(--accent); }
 
 .layer-plots {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(520px, 1fr));

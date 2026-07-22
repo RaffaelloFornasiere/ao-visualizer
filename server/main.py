@@ -37,6 +37,10 @@ def branches():
         refs = hf.list_refs()
     except httpx.HTTPError as e:
         raise HTTPException(502, f"HuggingFace request failed: {e}")
+    for ref in refs:
+        ref["tags"] = (
+            hf.branch_tags(ref["name"], ref["sha"]) if ref["name"] != "main" else []
+        )
     return {"repo": hf.HF_REPO, "branches": refs}
 
 
