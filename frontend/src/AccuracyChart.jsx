@@ -7,13 +7,15 @@ const FAMILY_COLORS = [
   '#e87ba4', '#008300', '#4a3aa7', '#e34948',
 ]
 
-const BAR_W = 34
-const BAR_GAP = 10
-const FAMILY_GAP = 28
-const PLOT_H = 190
-const TOP_PAD = 34
-const LABEL_H = 96
-const LEFT_PAD = 42
+const BAR_W = 52
+const BAR_GAP = 14
+const FAMILY_GAP = 36
+const PLOT_H = 300
+const TOP_PAD = 40
+const LEFT_PAD = 48
+const LABEL_ANGLE = 40 // degrees
+const LABEL_FONT = 12
+const LABEL_CHAR_W = LABEL_FONT * 0.6 // system-ui approx
 
 // Per-model accuracy bars grouped by quirk family, with Wilson 95% whiskers
 // and act_key toggles — the successor of the old HTML index chart.
@@ -59,8 +61,13 @@ export default function AccuracyChart({ models, runsByModel, mode }) {
     x += BAR_W + BAR_GAP
     prev = b.quirk
   }
-  const width = Math.max(x + 10, 360)
-  const height = TOP_PAD + PLOT_H + LABEL_H
+  // Size the label band (and right overflow) for the longest rotated label.
+  const rad = (LABEL_ANGLE * Math.PI) / 180
+  const maxLabelPx =
+    Math.max(0, ...bars.map((b) => b.plot_label.length)) * LABEL_CHAR_W
+  const labelH = Math.ceil(maxLabelPx * Math.sin(rad)) + 28
+  const width = Math.max(x + maxLabelPx * Math.cos(rad), 500)
+  const height = TOP_PAD + PLOT_H + labelH
 
   const yOf = (pct) => TOP_PAD + PLOT_H - (pct / 100) * PLOT_H
 
@@ -83,7 +90,7 @@ export default function AccuracyChart({ models, runsByModel, mode }) {
       <div style={{ overflowX: 'auto' }}>
         <svg
           viewBox={`0 0 ${width} ${height}`}
-          style={{ width: '100%', maxWidth: `${width}px`, height: 'auto', display: 'block' }}
+          style={{ width: '100%', minWidth: `${Math.round(width * 0.75)}px`, height: 'auto', display: 'block' }}
           role="img"
           aria-label="Per-model identification accuracy"
         >
@@ -105,7 +112,7 @@ export default function AccuracyChart({ models, runsByModel, mode }) {
             const [lo, hi] = wilsonCi(b.pass, b.total)
             const cx = b.x + BAR_W / 2
             const color = colorOf[b.quirk]
-            const labelY = TOP_PAD + PLOT_H + 12
+            const labelY = TOP_PAD + PLOT_H + 16
             return (
               <g key={b.name}>
                 {b.total > 0 ? (
@@ -136,8 +143,8 @@ export default function AccuracyChart({ models, runsByModel, mode }) {
                   </text>
                 )}
                 <text
-                  x={cx} y={labelY} fontSize="10" fill="var(--text-2)"
-                  transform={`rotate(40 ${cx} ${labelY})`}
+                  x={cx} y={labelY} fontSize={LABEL_FONT} fill="var(--text-2)"
+                  transform={`rotate(${LABEL_ANGLE} ${cx} ${labelY})`}
                 >
                   {b.plot_label}
                 </text>

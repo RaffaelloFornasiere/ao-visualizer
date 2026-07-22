@@ -50,7 +50,7 @@ body {
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
-.container { max-width: 1200px; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
+.container { width: 100%; margin: 0 auto; padding: 1.5rem 2rem 4rem; }
 
 .topbar {
   display: flex; align-items: baseline; gap: 0.75rem;
