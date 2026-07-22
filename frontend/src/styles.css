@@ -129,6 +129,27 @@ tr.section-row td {
 }
 .toggle button.active { background: var(--text); color: var(--surface); }
 
+.filters {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 0.6rem 1rem; margin: 0.75rem 0;
+}
+.filter-row { margin: 0.35rem 0; }
+.filter-row strong {
+  display: inline-block; min-width: 90px; font-size: 0.82rem;
+  color: var(--text-2); margin-right: 0.4rem;
+}
+.chip {
+  border: 1px solid var(--baseline); border-radius: 999px;
+  background: var(--surface); color: var(--text);
+  padding: 0.1rem 0.7rem; margin: 0.12rem 0.25rem 0.12rem 0;
+  font-size: 0.8rem; cursor: pointer;
+}
+.chip:hover { border-color: var(--accent); }
+.chip.off {
+  color: var(--muted); background: transparent;
+  border-style: dashed; text-decoration: line-through;
+}
+
 .meta-table td:first-child { color: var(--text-2); font-weight: 600; white-space: nowrap; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.82rem; }
 

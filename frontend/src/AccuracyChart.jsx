@@ -1,4 +1,3 @@
-import { useMemo, useState } from 'react'
 import { passStats, wilsonCi } from './stats'
 
 // Categorical palette (fixed slot order; family = identity).
@@ -17,36 +16,18 @@ const LABEL_ANGLE = 40 // degrees
 const LABEL_FONT = 12
 const LABEL_CHAR_W = LABEL_FONT * 0.6 // system-ui approx
 
-// Per-model accuracy bars grouped by quirk family, with Wilson 95% whiskers
-// and act_key toggles — the successor of the old HTML index chart.
+// Per-model accuracy bars grouped by quirk family, with Wilson 95% whiskers —
+// the successor of the old HTML index chart. Runs arrive already filtered.
 export default function AccuracyChart({ models, runsByModel, mode }) {
-  const actKeys = useMemo(() => {
-    const s = new Set()
-    for (const runs of runsByModel.values())
-      for (const r of runs) if (r.combo.act_key) s.add(r.combo.act_key)
-    return [...s].sort()
-  }, [runsByModel])
-  const [activeActs, setActiveActs] = useState(null) // null = all
-
-  const active = activeActs ?? new Set(actKeys)
-  const toggle = (ak) => {
-    const next = new Set(active)
-    if (next.has(ak)) next.delete(ak)
-    else next.add(ak)
-    setActiveActs(next)
-  }
-
   const quirks = [...new Set(models.map((m) => m.quirk))]
   const colorOf = Object.fromEntries(
     quirks.map((q, i) => [q, FAMILY_COLORS[i % FAMILY_COLORS.length]])
   )
 
-  const bars = models.map((m) => {
-    const runs = (runsByModel.get(m.name) ?? []).filter(
-      (r) => !r.combo.act_key || active.has(r.combo.act_key)
-    )
-    return { ...m, ...passStats(runs, mode) }
-  })
+  const bars = models.map((m) => ({
+    ...m,
+    ...passStats(runsByModel.get(m.name) ?? [], mode),
+  }))
 
   // Layout with family gaps
   let x = LEFT_PAD
@@ -73,20 +54,6 @@ export default function AccuracyChart({ models, runsByModel, mode }) {
 
   return (
     <div>
-      {actKeys.length > 1 && (
-        <div style={{ margin: '0.4rem 0' }}>
-          <span style={{ color: 'var(--text-2)', fontSize: '0.85rem', marginRight: '0.5rem' }}>
-            act_key:
-          </span>
-          <span className="toggle">
-            {actKeys.map((ak) => (
-              <button key={ak} className={active.has(ak) ? 'active' : ''} onClick={() => toggle(ak)}>
-                {ak}
-              </button>
-            ))}
-          </span>
-        </div>
-      )}
       <div style={{ overflowX: 'auto' }}>
         <svg
           viewBox={`0 0 ${width} ${height}`}
