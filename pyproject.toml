@@ -1,0 +1,13 @@
+[project]
+name = "ao-visualizer"
+version = "0.1.0"
+description = "Web visualizer for AO analyzer reports on HuggingFace"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "httpx>=0.27",
+]
+
+[tool.uv]
+package = false
