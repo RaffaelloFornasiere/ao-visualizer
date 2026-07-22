@@ -5,17 +5,17 @@ import { AccuracyBar, ErrorNotice, Loading } from '../components'
 import AccuracyChart from '../AccuracyChart'
 import Filters, { applyFilters, defaultOff } from '../Filters'
 import { buildStats, downloadStats } from '../exportStats'
-import { comboLabel, comboSig, groupPath } from '../combos'
 import { passStats } from '../stats'
 
 function Cell({ runs, branch, mode }) {
   if (!runs || runs.length === 0) return <td className="num">—</td>
   const { pass, total } = passStats(runs, mode)
   const pct = total ? (100 * pass) / total : 0
-  const target = `/b/${branch}/g/${groupPath(runs[0].path)}`
+  // Path prefix up to the layer: quirk/model/act_key/layer
+  const prefix = runs[0].path.split('/').slice(0, 4).join('/')
   return (
     <td className="num">
-      <Link to={target} title="Open runs for this combo">
+      <Link to={`/b/${branch}/g/${prefix}`} title="Open runs for this model × layer">
         <span className="cell-frac">{pass}/{total}</span>
         <span className="mini-bar">
           <span className="fill" style={{ width: `${pct}%` }} />
@@ -65,23 +65,31 @@ function BranchView({ summary, branch, mode, setMode, refreshing, load }) {
   const hasSpecific = useMemo(() => runs.some((r) => r.specific != null), [runs])
   const filtered = useMemo(() => applyFilters(runs, off), [runs, off])
 
-  // Column layout: unique combos among the filtered runs, ordered by label.
+  // Column layout: one column per (act_key × layer) among the filtered runs;
+  // verbalizer prompts are aggregated (drill into a cell for the split).
+  const colSig = (r) => `${r.combo.act_key ?? ''}|${r.combo.layer ?? ''}`
   const combos = useMemo(() => {
     const seen = new Map()
     for (const r of filtered) {
-      const sig = comboSig(r.combo)
-      if (!seen.has(sig)) seen.set(sig, { sig, label: comboLabel(r.combo) })
+      const sig = colSig(r)
+      if (!seen.has(sig)) seen.set(sig, { sig, act: r.combo.act_key, layer: r.combo.layer })
     }
-    return [...seen.values()].sort((a, b) => a.label.localeCompare(b.label))
+    const multiAct = new Set([...seen.values()].map((c) => c.act)).size > 1
+    return [...seen.values()]
+      .map((c) => ({
+        ...c,
+        label: multiAct ? `${c.act} · L${c.layer}` : `Layer ${c.layer}`,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }))
   }, [filtered])
 
-  // runsBy: model -> sig -> runs
+  // runsBy: model -> colSig -> runs
   const runsBy = useMemo(() => {
     const m = new Map()
     for (const r of filtered) {
       if (!m.has(r.model)) m.set(r.model, new Map())
       const per = m.get(r.model)
-      const sig = comboSig(r.combo)
+      const sig = colSig(r)
       if (!per.has(sig)) per.set(sig, [])
       per.get(sig).push(r)
     }
@@ -172,7 +180,7 @@ function BranchView({ summary, branch, mode, setMode, refreshing, load }) {
 
       <AccuracyChart models={models} runsByModel={runsByModel} mode={mode} />
 
-      <h2>Per-combo breakdown</h2>
+      <h2>Per-layer breakdown</h2>
       <div className="table-wrap">
         <table>
           <thead>

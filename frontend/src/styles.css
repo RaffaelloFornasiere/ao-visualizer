@@ -130,25 +130,38 @@ tr.section-row td {
 .toggle button.active { background: var(--text); color: var(--surface); }
 
 .filters {
+  display: grid; grid-template-columns: max-content 1fr;
+  gap: 0.55rem 1.25rem; align-items: start;
   background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-  padding: 0.6rem 1rem; margin: 0.75rem 0;
+  padding: 0.9rem 1.1rem; margin: 0.75rem 0;
 }
-.filter-row { margin: 0.35rem 0; }
-.filter-row strong {
-  display: inline-block; min-width: 90px; font-size: 0.82rem;
-  color: var(--text-2); margin-right: 0.4rem;
+.filter-label {
+  font-size: 0.8rem; font-weight: 600; color: var(--text-2);
+  padding-top: 0.2rem; white-space: nowrap;
 }
+.filter-actions { margin-left: 0.5rem; }
+.filter-actions button {
+  border: 0; background: none; color: var(--accent); cursor: pointer;
+  font-size: 0.72rem; padding: 0 0.15rem;
+}
+.filter-actions button:hover { text-decoration: underline; }
+.filter-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }
 .chip {
-  border: 1px solid var(--baseline); border-radius: 999px;
-  background: var(--surface); color: var(--text);
-  padding: 0.1rem 0.7rem; margin: 0.12rem 0.25rem 0.12rem 0;
-  font-size: 0.8rem; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  border: 1px solid var(--accent); border-radius: 999px;
+  background: var(--accent-soft); color: var(--text);
+  padding: 0.12rem 0.7rem; font-size: 0.8rem; cursor: pointer;
+  line-height: 1.35;
 }
-.chip:hover { border-color: var(--accent); }
+.chip .chip-mark {
+  font-size: 0.7rem; color: var(--accent);
+  width: 0.7rem; display: inline-block; text-align: center;
+}
+.chip:hover { filter: brightness(0.97); }
 .chip.off {
-  color: var(--muted); background: transparent;
-  border-style: dashed; text-decoration: line-through;
+  background: transparent; border-color: var(--grid); color: var(--muted);
 }
+.chip.off:hover { border-color: var(--baseline); filter: none; }
 
 .meta-table td:first-child { color: var(--text-2); font-weight: 600; white-space: nowrap; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.82rem; }

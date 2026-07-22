@@ -1,3 +1,5 @@
+import { Fragment } from 'react'
+
 // Toggle-chip filters over the run dimensions, like the old HTML index.
 // `off` holds the EXCLUDED values per dimension; everything is on by default
 // except act_key "lora" (parity with the old dashboard's DEFAULT_OFF).
@@ -26,28 +28,46 @@ export function applyFilters(runs, off) {
   )
 }
 
-function Chip({ value, isOff, onClick, title }) {
+function Chip({ label, isOff, onClick, title }) {
   return (
-    <button
-      className={`chip${isOff ? ' off' : ''}`}
-      onClick={onClick}
-      title={title ?? value}
-    >
-      {value}
+    <button className={`chip${isOff ? ' off' : ''}`} onClick={onClick} title={title ?? label}>
+      <span className="chip-mark">{isOff ? '' : '✓'}</span>
+      {label}
     </button>
   )
 }
 
+function FilterRow({ label, items, offSet, onToggle, onSetAll }) {
+  return (
+    <Fragment>
+      <div className="filter-label">
+        {label}
+        <span className="filter-actions">
+          <button onClick={() => onSetAll(false)}>all</button>
+          <button onClick={() => onSetAll(true)}>none</button>
+        </span>
+      </div>
+      <div className="filter-chips">
+        {items.map((it) => (
+          <Chip key={it.value} label={it.label} title={it.title}
+                isOff={offSet.has(it.value)} onClick={() => onToggle(it.value)} />
+        ))}
+      </div>
+    </Fragment>
+  )
+}
+
 export default function Filters({ runs, off, setOff, models }) {
-  const toggle = (dimKey, value) => {
+  const update = (dimKey, mutate) => {
     const next = { ...off, [dimKey]: new Set(off[dimKey]) }
-    if (next[dimKey].has(value)) next[dimKey].delete(value)
-    else next[dimKey].add(value)
+    mutate(next[dimKey])
     setOff(next)
   }
+  const toggle = (dimKey, value) =>
+    update(dimKey, (s) => (s.has(value) ? s.delete(value) : s.add(value)))
+  const setAll = (dimKey, values, allOff) =>
+    update(dimKey, (s) => values.forEach((v) => (allOff ? s.add(v) : s.delete(v))))
 
-  const labelOf = Object.fromEntries(models.map((m) => [m.name, m.plot_label]))
-  const quirkOf = Object.fromEntries(models.map((m) => [m.name, m.quirk]))
   const quirks = [...new Set(models.map((m) => m.quirk))]
 
   return (
@@ -56,27 +76,27 @@ export default function Filters({ runs, off, setOff, models }) {
         const values = dimValues(runs, d)
         if (values.length < 2) return null
         return (
-          <div className="filter-row" key={d.key}>
-            <strong>{d.label}</strong>
-            {values.map((v) => (
-              <Chip key={v} value={v} isOff={off[d.key].has(v)}
-                    onClick={() => toggle(d.key, v)} />
-            ))}
-          </div>
+          <FilterRow
+            key={d.key}
+            label={d.label}
+            items={values.map((v) => ({ value: v, label: v }))}
+            offSet={off[d.key]}
+            onToggle={(v) => toggle(d.key, v)}
+            onSetAll={(allOff) => setAll(d.key, values, allOff)}
+          />
         )
       })}
       {quirks.map((quirk) => {
-        const ms = models.filter((m) => quirkOf[m.name] === quirk)
+        const ms = models.filter((m) => m.quirk === quirk)
         return (
-          <div className="filter-row" key={quirk}>
-            <strong>{quirks.length > 1 ? quirk : 'Model'}</strong>
-            {ms.map((m) => (
-              <Chip key={m.name} value={labelOf[m.name] ?? m.name}
-                    title={m.name}
-                    isOff={off.model.has(m.name)}
-                    onClick={() => toggle('model', m.name)} />
-            ))}
-          </div>
+          <FilterRow
+            key={`model-${quirk}`}
+            label={quirks.length > 1 ? quirk : 'Model'}
+            items={ms.map((m) => ({ value: m.name, label: m.plot_label, title: m.name }))}
+            offSet={off.model}
+            onToggle={(v) => toggle('model', v)}
+            onSetAll={(allOff) => setAll('model', ms.map((m) => m.name), allOff)}
+          />
         )
       })}
     </div>
