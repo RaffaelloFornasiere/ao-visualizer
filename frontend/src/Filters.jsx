@@ -57,7 +57,7 @@ function FilterRow({ label, items, offSet, onToggle, onSetAll }) {
   )
 }
 
-export default function Filters({ runs, off, setOff, models }) {
+export default function Filters({ runs, off, setOff, models, filteredCount }) {
   const update = (dimKey, mutate) => {
     const next = { ...off, [dimKey]: new Set(off[dimKey]) }
     mutate(next[dimKey])
@@ -69,9 +69,25 @@ export default function Filters({ runs, off, setOff, models }) {
     update(dimKey, (s) => values.forEach((v) => (allOff ? s.add(v) : s.delete(v))))
 
   const quirks = [...new Set(models.map((m) => m.quirk))]
+  const isDefault = JSON.stringify(
+    Object.fromEntries(Object.entries(off).map(([k, s]) => [k, [...s].sort()]))
+  ) === JSON.stringify(
+    Object.fromEntries(Object.entries(defaultOff(runs)).map(([k, s]) => [k, [...s].sort()]))
+  )
 
   return (
     <div className="filters">
+      <div className="filters-head">
+        <strong>Filters</strong>
+        <span className="filters-count">
+          {filteredCount} of {runs.length} runs
+        </span>
+        {!isDefault && (
+          <button className="filters-reset" onClick={() => setOff(defaultOff(runs))}>
+            reset
+          </button>
+        )}
+      </div>
       {FILTER_DIMS.filter((d) => d.key !== 'model').map((d) => {
         const values = dimValues(runs, d)
         if (values.length < 2) return null

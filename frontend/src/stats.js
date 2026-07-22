@@ -27,3 +27,27 @@ export function passStats(runs, mode) {
   }
   return { pass, total }
 }
+
+// Model-level aggregate: 'mean' pools all runs; 'max' scores each
+// act_key × layer separately and keeps the best one (ties -> larger n).
+export function aggregate(runs, mode, agg) {
+  if (agg !== 'max') return { ...passStats(runs, mode), layer: null }
+  const byLayer = new Map()
+  for (const r of runs) {
+    const sig = `${r.combo.act_key ?? ''}|${r.combo.layer ?? ''}`
+    if (!byLayer.has(sig)) byLayer.set(sig, [])
+    byLayer.get(sig).push(r)
+  }
+  let best = { pass: 0, total: 0, layer: null }
+  let bestAcc = -1
+  for (const rs of byLayer.values()) {
+    const s = passStats(rs, mode)
+    if (!s.total) continue
+    const acc = s.pass / s.total
+    if (acc > bestAcc || (acc === bestAcc && s.total > best.total)) {
+      bestAcc = acc
+      best = { ...s, layer: rs[0].combo.layer ?? null }
+    }
+  }
+  return best
+}

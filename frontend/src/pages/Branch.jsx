@@ -5,7 +5,7 @@ import { AccuracyBar, ErrorNotice, Loading } from '../components'
 import AccuracyChart from '../AccuracyChart'
 import Filters, { applyFilters, defaultOff } from '../Filters'
 import { buildStats, downloadStats } from '../exportStats'
-import { passStats } from '../stats'
+import { aggregate, passStats } from '../stats'
 
 function Cell({ runs, branch, mode }) {
   if (!runs || runs.length === 0) return <td className="num">—</td>
@@ -61,6 +61,8 @@ export default function Branch() {
 function BranchView({ summary, branch, mode, setMode, refreshing, load }) {
   const { runs } = summary
   const [off, setOff] = useState(() => defaultOff(runs))
+  const [agg, setAgg] = useState('mean')
+  const [view, setView] = useState('table')
 
   const hasSpecific = useMemo(() => runs.some((r) => r.specific != null), [runs])
   const filtered = useMemo(() => applyFilters(runs, off), [runs, off])
@@ -160,7 +162,8 @@ function BranchView({ summary, branch, mode, setMode, refreshing, load }) {
         </div>
       </div>
 
-      <Filters runs={runs} off={off} setOff={setOff} models={allModels} />
+      <Filters runs={runs} off={off} setOff={setOff} models={allModels}
+               filteredCount={filtered.length} />
 
       <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', margin: '0.75rem 0' }}>
         {hasSpecific && (
@@ -172,39 +175,72 @@ function BranchView({ summary, branch, mode, setMode, refreshing, load }) {
             ))}
           </span>
         )}
+        <span className="toggle" title="Model aggregate: pool all layers, or keep each model's best layer">
+          {[['mean', 'Mean'], ['max', 'Max layer']].map(([a, label]) => (
+            <button key={a} className={agg === a ? 'active' : ''} onClick={() => setAgg(a)}>
+              {label}
+            </button>
+          ))}
+        </span>
         <button className="chip" onClick={exportJson}>Export stats (JSON)</button>
         <button className="chip" onClick={() => load(true)} disabled={refreshing}>
           {refreshing ? 'Refreshing…' : 'Refresh from HF'}
         </button>
       </div>
 
-      <AccuracyChart models={models} runsByModel={runsByModel} mode={mode} />
+      <AccuracyChart models={models} runsByModel={runsByModel} mode={mode} agg={agg} />
 
-      <h2>Per-layer breakdown</h2>
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Model</th>
-              {combos.map((c) => (
-                <th key={c.sig} className="num">{c.label}</th>
+      <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        Per-layer breakdown
+        <span className="toggle">
+          {[['table', 'Table'], ['plots', 'Plots']].map(([v, label]) => (
+            <button key={v} className={view === v ? 'active' : ''} onClick={() => setView(v)}>
+              {label}
+            </button>
+          ))}
+        </span>
+      </h2>
+      {view === 'table' ? (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Model</th>
+                {combos.map((c) => (
+                  <th key={c.sig} className="num">{c.label}</th>
+                ))}
+                <th>Total ({agg === 'max' ? 'max layer' : 'mean'})</th>
+              </tr>
+            </thead>
+            <tbody>
+              {quirks.map((quirk) => (
+                <QuirkRows
+                  key={quirk}
+                  quirk={quirk}
+                  showHeader={quirks.length > 1}
+                  models={models.filter((m) => m.quirk === quirk)}
+                  {...{ combos, runsBy, branch, mode, agg }}
+                />
               ))}
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {quirks.map((quirk) => (
-              <QuirkRows
-                key={quirk}
-                quirk={quirk}
-                showHeader={quirks.length > 1}
-                models={models.filter((m) => m.quirk === quirk)}
-                {...{ combos, runsBy, branch, mode }}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="layer-plots">
+          {combos.map((c) => (
+            <div className="layer-plot" key={c.sig}>
+              <h3>{c.label}</h3>
+              <AccuracyChart
+                models={models}
+                runsByModel={new Map(models.map((m) => [
+                  m.name, runsBy.get(m.name)?.get(c.sig) ?? [],
+                ]))}
+                mode={mode}
               />
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <h2>Ground truth</h2>
       {Object.entries(summary.quirks).map(([name, desc]) => (
@@ -217,7 +253,7 @@ function BranchView({ summary, branch, mode, setMode, refreshing, load }) {
   )
 }
 
-function QuirkRows({ quirk, showHeader, models, combos, runsBy, branch, mode }) {
+function QuirkRows({ quirk, showHeader, models, combos, runsBy, branch, mode, agg }) {
   return (
     <>
       {showHeader && (
@@ -228,7 +264,7 @@ function QuirkRows({ quirk, showHeader, models, combos, runsBy, branch, mode }) 
       {models.map((m) => {
         const per = runsBy.get(m.name) ?? new Map()
         const all = [...per.values()].flat()
-        const { pass, total } = passStats(all, mode)
+        const { pass, total, layer } = aggregate(all, mode, agg)
         return (
           <tr key={m.name}>
             <td title={m.name}>{m.plot_label}</td>
@@ -237,6 +273,11 @@ function QuirkRows({ quirk, showHeader, models, combos, runsBy, branch, mode }) 
             ))}
             <td>
               <AccuracyBar pass={pass} total={total} />
+              {layer != null && (
+                <span style={{ color: 'var(--muted)', fontSize: '0.78rem', marginLeft: '0.4rem' }}>
+                  L{layer}
+                </span>
+              )}
             </td>
           </tr>
         )

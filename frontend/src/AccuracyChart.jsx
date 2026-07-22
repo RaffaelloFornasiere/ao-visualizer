@@ -1,4 +1,4 @@
-import { passStats, wilsonCi } from './stats'
+import { aggregate, wilsonCi } from './stats'
 
 // Categorical palette (fixed slot order; family = identity).
 const FAMILY_COLORS = [
@@ -18,7 +18,8 @@ const LABEL_CHAR_W = LABEL_FONT * 0.6 // system-ui approx
 
 // Per-model accuracy bars grouped by quirk family, with Wilson 95% whiskers —
 // the successor of the old HTML index chart. Runs arrive already filtered.
-export default function AccuracyChart({ models, runsByModel, mode }) {
+// agg='max' keeps each model's best act_key × layer instead of pooling.
+export default function AccuracyChart({ models, runsByModel, mode, agg = 'mean' }) {
   const quirks = [...new Set(models.map((m) => m.quirk))]
   const colorOf = Object.fromEntries(
     quirks.map((q, i) => [q, FAMILY_COLORS[i % FAMILY_COLORS.length]])
@@ -26,7 +27,7 @@ export default function AccuracyChart({ models, runsByModel, mode }) {
 
   const bars = models.map((m) => ({
     ...m,
-    ...passStats(runsByModel.get(m.name) ?? [], mode),
+    ...aggregate(runsByModel.get(m.name) ?? [], mode, agg),
   }))
 
   // Layout with family gaps
@@ -90,7 +91,8 @@ export default function AccuracyChart({ models, runsByModel, mode }) {
                       fill={color} rx="4"
                     >
                       <title>
-                        {`${b.plot_label}: ${b.pass}/${b.total} (${pct.toFixed(0)}%), 95% CI ${lo.toFixed(0)}–${hi.toFixed(0)}%`}
+                        {`${b.plot_label}: ${b.pass}/${b.total} (${pct.toFixed(0)}%), 95% CI ${lo.toFixed(0)}–${hi.toFixed(0)}%` +
+                          (b.layer != null ? ` — best layer: ${b.layer}` : '')}
                       </title>
                     </rect>
                     <line x1={cx} y1={yOf(hi)} x2={cx} y2={yOf(lo)}
@@ -103,6 +105,12 @@ export default function AccuracyChart({ models, runsByModel, mode }) {
                           fontWeight="600" fill="var(--text)">
                       {pct.toFixed(0)}%
                     </text>
+                    {b.layer != null && (
+                      <text x={cx} y={yOf(hi) - 18} textAnchor="middle" fontSize="9"
+                            fill="var(--muted)">
+                        L{b.layer}
+                      </text>
+                    )}
                   </>
                 ) : (
                   <text x={cx} y={yOf(0) - 5} textAnchor="middle" fontSize="9" fill="var(--muted)">
