@@ -72,7 +72,17 @@ export default function Home() {
                 <span key={t} className="tag-pill">{t}</span>
               ))}
             </span>
-            <span className="sha mono">{b.sha.slice(0, 8)}</span>
+            <span>
+              <span className="sha mono">{b.sha.slice(0, 8)}</span>
+              <a
+                className="ext-link"
+                href={`https://huggingface.co/datasets/${data.repo}/tree/${b.name}`}
+                target="_blank" rel="noreferrer"
+                title="Open branch on HuggingFace"
+              >
+                HF ↗
+              </a>
+            </span>
           </li>
         ))}
       </ul>

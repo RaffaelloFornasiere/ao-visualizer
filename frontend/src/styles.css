@@ -184,6 +184,9 @@ tr.section-row td {
   display: flex; justify-content: space-between; align-items: center; gap: 1rem;
 }
 .branch-list .sha { color: var(--muted); font-size: 0.78rem; }
+.ext-link {
+  margin-left: 0.75rem; font-size: 0.78rem; white-space: nowrap;
+}
 .tag-pill {
   display: inline-block; margin-left: 0.45rem; padding: 0.02rem 0.5rem;
   border-radius: 999px; background: var(--accent-soft); color: var(--text);

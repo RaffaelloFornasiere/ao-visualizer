@@ -153,7 +153,13 @@ function BranchView({ summary, branch, mode, setMode, refreshing, load }) {
         <div className="tile">
           <div className="label">Report</div>
           <div className="value mono" style={{ fontSize: '0.9rem' }}>
-            {summary.sha?.slice(0, 8)}
+            <a
+              href={`https://huggingface.co/datasets/${summary.hf_repo}/tree/${summary.run_name}`}
+              target="_blank" rel="noreferrer"
+              title="Open branch on HuggingFace"
+            >
+              {summary.sha?.slice(0, 8)} ↗
+            </a>
           </div>
           <div className="sub mono">
             code: {summary.repo_commit ? summary.repo_commit.slice(0, 8) : 'unknown'}
