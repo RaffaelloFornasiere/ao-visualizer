@@ -55,20 +55,26 @@ def _scores(judges: dict) -> tuple[int, int | None]:
     return generic, specific
 
 
-def summary(entry: dict) -> dict:
-    """Compact per-run rows + display metadata; no prompt texts."""
+def summary(entry: dict, branch_cfg: dict | None = None) -> dict:
+    """Compact per-run rows + display metadata; no prompt texts.
+
+    Display metadata (model labels/ordering/grouping, tags) prefers the
+    branch's live run_config.yaml over the report's embedded copy, so it can
+    be edited on HF without rewriting the report."""
     report = entry["report"]
     cfg = report.get("config", {})
     analyzer = cfg.get("analyzer", {})
+    display_cfg = branch_cfg if branch_cfg and branch_cfg.get("models") else cfg
 
     models = [
         {
             "name": m["name"],
             "quirk": m.get("quirk", ""),
+            "family": m.get("group_label") or m.get("quirk", ""),
             "plot_label": m.get("plot_label", m["name"]),
             "plot_order": m.get("plot_order", 999),
         }
-        for m in cfg.get("models", [])
+        for m in display_cfg.get("models", [])
     ]
 
     runs = []
@@ -89,7 +95,7 @@ def summary(entry: dict) -> dict:
     return {
         "run_name": report.get("run_name", ""),
         "hf_repo": report.get("hf_repo", ""),
-        "tags": [str(t) for t in cfg.get("tags") or []],
+        "tags": [str(t) for t in display_cfg.get("tags") or []],
         "sha": entry["sha"],
         "repo_commit": report.get("repo_commit"),
         "schema_version": report.get("schema_version"),

@@ -46,17 +46,21 @@ def _cache_path(branch: str, sha: str) -> Path:
     return CACHE_DIR / f"{HF_REPO.replace('/', '__')}__{branch}@{sha}.json"
 
 
-_tags_cache: dict[str, tuple[str, list[str]]] = {}  # branch -> (sha, tags)
-_tags_lock = threading.Lock()
+_config_cache: dict[str, tuple[str, dict | None]] = {}  # branch -> (sha, config)
+_config_lock = threading.Lock()
 
 
-def branch_tags(branch: str, sha: str) -> list[str]:
-    """Tags from the branch's run_config.yaml (a few KB), cached per sha."""
-    with _tags_lock:
-        hit = _tags_cache.get(branch)
+def branch_config(branch: str, sha: str) -> dict | None:
+    """The branch's run_config.yaml (a few KB), parsed and cached per sha.
+
+    This is the live source for display metadata (tags, model labels,
+    ordering, group_label) so it can be edited without rewriting the report.
+    """
+    with _config_lock:
+        hit = _config_cache.get(branch)
         if hit and hit[0] == sha:
             return hit[1]
-    tags: list[str] = []
+    config: dict | None = None
     try:
         r = httpx.get(
             f"https://huggingface.co/datasets/{HF_REPO}/resolve/{branch}/run_config.yaml",
@@ -65,12 +69,17 @@ def branch_tags(branch: str, sha: str) -> list[str]:
         if r.status_code == 200:
             raw = yaml.safe_load(r.text)
             if isinstance(raw, dict):
-                tags = [str(t) for t in raw.get("tags") or []]
+                config = raw
     except (httpx.HTTPError, yaml.YAMLError):
-        pass  # no tags is fine; retried on next sha change
-    with _tags_lock:
-        _tags_cache[branch] = (sha, tags)
-    return tags
+        pass  # missing/broken config is fine; retried on next sha change
+    with _config_lock:
+        _config_cache[branch] = (sha, config)
+    return config
+
+
+def branch_tags(branch: str, sha: str) -> list[str]:
+    config = branch_config(branch, sha) or {}
+    return [str(t) for t in config.get("tags") or []]
 
 
 def fetch_report(branch: str, sha: str) -> dict:

@@ -68,7 +68,7 @@ export default function Filters({ runs, off, setOff, models, filteredCount }) {
   const setAll = (dimKey, values, allOff) =>
     update(dimKey, (s) => values.forEach((v) => (allOff ? s.add(v) : s.delete(v))))
 
-  const quirks = [...new Set(models.map((m) => m.quirk))]
+  const quirks = [...new Set(models.map((m) => m.family))]
   const isDefault = JSON.stringify(
     Object.fromEntries(Object.entries(off).map(([k, s]) => [k, [...s].sort()]))
   ) === JSON.stringify(
@@ -103,7 +103,7 @@ export default function Filters({ runs, off, setOff, models, filteredCount }) {
         )
       })}
       {quirks.map((quirk) => {
-        const ms = models.filter((m) => m.quirk === quirk)
+        const ms = models.filter((m) => m.family === quirk)
         return (
           <FilterRow
             key={`model-${quirk}`}

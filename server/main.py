@@ -46,7 +46,8 @@ def branches():
 
 @app.get("/api/branch/{branch}/summary")
 def branch_summary(branch: str):
-    return reports.summary(_entry_or_404(branch))
+    entry = _entry_or_404(branch)
+    return reports.summary(entry, hf.branch_config(branch, entry["sha"]))
 
 
 @app.get("/api/branch/{branch}/run")

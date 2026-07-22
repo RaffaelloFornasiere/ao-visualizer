@@ -16,11 +16,11 @@ const LABEL_ANGLE = 40 // degrees
 const LABEL_FONT = 12
 const LABEL_CHAR_W = LABEL_FONT * 0.6 // system-ui approx
 
-// Per-model accuracy bars grouped by quirk family, with Wilson 95% whiskers —
+// Per-model accuracy bars grouped by display family (group_label or quirk), with Wilson 95% whiskers —
 // the successor of the old HTML index chart. Runs arrive already filtered.
 // agg='max' keeps each model's best act_key × layer instead of pooling.
 export default function AccuracyChart({ models, runsByModel, mode, agg = 'mean' }) {
-  const quirks = [...new Set(models.map((m) => m.quirk))]
+  const quirks = [...new Set(models.map((m) => m.family))]
   const colorOf = Object.fromEntries(
     quirks.map((q, i) => [q, FAMILY_COLORS[i % FAMILY_COLORS.length]])
   )
@@ -37,15 +37,15 @@ export default function AccuracyChart({ models, runsByModel, mode, agg = 'mean' 
   const famSpan = new Map()
   const separators = []
   for (const b of bars) {
-    if (prev && b.quirk !== prev) {
+    if (prev && b.family !== prev) {
       separators.push(x - BAR_GAP + FAMILY_GAP / 2)
       x += FAMILY_GAP
     }
     placed.push({ ...b, x })
-    if (!famSpan.has(b.quirk)) famSpan.set(b.quirk, [x, x])
-    famSpan.get(b.quirk)[1] = x + BAR_W
+    if (!famSpan.has(b.family)) famSpan.set(b.family, [x, x])
+    famSpan.get(b.family)[1] = x + BAR_W
     x += BAR_W + BAR_GAP
-    prev = b.quirk
+    prev = b.family
   }
   // Size the label band (and right overflow) for the longest rotated label.
   const rad = (LABEL_ANGLE * Math.PI) / 180
@@ -83,7 +83,7 @@ export default function AccuracyChart({ models, runsByModel, mode, agg = 'mean' 
             const pct = b.total ? (100 * b.pass) / b.total : 0
             const [lo, hi] = wilsonCi(b.pass, b.total)
             const cx = b.x + BAR_W / 2
-            const color = colorOf[b.quirk]
+            const color = colorOf[b.family]
             const labelY = TOP_PAD + PLOT_H + 16
             return (
               <g key={b.name}>

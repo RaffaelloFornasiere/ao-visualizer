@@ -101,12 +101,12 @@ function BranchView({ summary, branch, mode, setMode, refreshing, load }) {
   // Group by family first (config order), then plot_order within the family —
   // plot_order values repeat across families, so a global sort would interleave.
   const allModels = useMemo(() => {
-    const quirkRank = new Map()
+    const familyRank = new Map()
     for (const m of summary.models)
-      if (!quirkRank.has(m.quirk)) quirkRank.set(m.quirk, quirkRank.size)
+      if (!familyRank.has(m.family)) familyRank.set(m.family, familyRank.size)
     return [...summary.models].sort(
       (a, b) =>
-        quirkRank.get(a.quirk) - quirkRank.get(b.quirk) ||
+        familyRank.get(a.family) - familyRank.get(b.family) ||
         a.plot_order - b.plot_order ||
         a.name.localeCompare(b.name)
     )
@@ -123,7 +123,7 @@ function BranchView({ summary, branch, mode, setMode, refreshing, load }) {
     }
     return m
   }, [filtered])
-  const quirks = [...new Set(models.map((m) => m.quirk))]
+  const quirks = [...new Set(models.map((m) => m.family))]
   const overall = passStats(filtered, mode)
 
   const exportJson = () =>
@@ -233,7 +233,7 @@ function BranchView({ summary, branch, mode, setMode, refreshing, load }) {
                   key={quirk}
                   quirk={quirk}
                   showHeader={quirks.length > 1}
-                  models={models.filter((m) => m.quirk === quirk)}
+                  models={models.filter((m) => m.family === quirk)}
                   {...{ combos, runsBy, branch, mode, agg }}
                 />
               ))}
