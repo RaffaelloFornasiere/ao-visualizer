@@ -98,10 +98,19 @@ function BranchView({ summary, branch, mode, setMode, refreshing, load }) {
     return m
   }, [filtered])
 
-  const allModels = useMemo(
-    () => [...summary.models].sort((a, b) => a.plot_order - b.plot_order),
-    [summary.models]
-  )
+  // Group by family first (config order), then plot_order within the family —
+  // plot_order values repeat across families, so a global sort would interleave.
+  const allModels = useMemo(() => {
+    const quirkRank = new Map()
+    for (const m of summary.models)
+      if (!quirkRank.has(m.quirk)) quirkRank.set(m.quirk, quirkRank.size)
+    return [...summary.models].sort(
+      (a, b) =>
+        quirkRank.get(a.quirk) - quirkRank.get(b.quirk) ||
+        a.plot_order - b.plot_order ||
+        a.name.localeCompare(b.name)
+    )
+  }, [summary.models])
   const models = useMemo(
     () => allModels.filter((m) => !off.model.has(m.name)),
     [allModels, off]

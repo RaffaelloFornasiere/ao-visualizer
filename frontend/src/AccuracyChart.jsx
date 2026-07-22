@@ -8,9 +8,9 @@ const FAMILY_COLORS = [
 
 const BAR_W = 52
 const BAR_GAP = 14
-const FAMILY_GAP = 36
+const FAMILY_GAP = 72
 const PLOT_H = 300
-const TOP_PAD = 40
+const TOP_PAD = 56
 const LEFT_PAD = 48
 const LABEL_ANGLE = 40 // degrees
 const LABEL_FONT = 12
@@ -30,13 +30,17 @@ export default function AccuracyChart({ models, runsByModel, mode, agg = 'mean' 
     ...aggregate(runsByModel.get(m.name) ?? [], mode, agg),
   }))
 
-  // Layout with family gaps
+  // Layout with family gaps; remember gap centers for separators
   let x = LEFT_PAD
   let prev = null
   const placed = []
   const famSpan = new Map()
+  const separators = []
   for (const b of bars) {
-    if (prev && b.quirk !== prev) x += FAMILY_GAP
+    if (prev && b.quirk !== prev) {
+      separators.push(x - BAR_GAP + FAMILY_GAP / 2)
+      x += FAMILY_GAP
+    }
     placed.push({ ...b, x })
     if (!famSpan.has(b.quirk)) famSpan.set(b.quirk, [x, x])
     famSpan.get(b.quirk)[1] = x + BAR_W
@@ -127,14 +131,17 @@ export default function AccuracyChart({ models, runsByModel, mode, agg = 'mean' 
             )
           })}
 
-          {[...famSpan.entries()].map(([quirk, [x0, x1]]) =>
-            quirks.length > 1 ? (
-              <text key={quirk} x={(x0 + x1) / 2} y={height - 4} textAnchor="middle"
-                    fontSize="11.5" fontWeight="600" fill="var(--text)">
+          {quirks.length > 1 && separators.map((sx) => (
+            <line key={sx} x1={sx} y1={TOP_PAD - 30} x2={sx} y2={TOP_PAD + PLOT_H}
+                  stroke="var(--grid)" strokeWidth="1" />
+          ))}
+          {quirks.length > 1 &&
+            [...famSpan.entries()].map(([quirk, [x0, x1]]) => (
+              <text key={quirk} x={(x0 + x1) / 2} y={TOP_PAD - 34} textAnchor="middle"
+                    fontSize="13" fontWeight="700" fill={colorOf[quirk]}>
                 {quirk}
               </text>
-            ) : null
-          )}
+            ))}
         </svg>
       </div>
     </div>
