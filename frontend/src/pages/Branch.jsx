@@ -29,7 +29,7 @@ export default function Branch() {
   const { branch } = useParams()
   const [summary, setSummary] = useState(null)
   const [error, setError] = useState(null)
-  const [mode, setMode] = useState('specific')
+  const [mode, setMode] = useState('both')
   const [refreshing, setRefreshing] = useState(false)
 
   const load = (fresh) => {
@@ -183,7 +183,7 @@ function BranchView({ summary, branch, mode, setMode, refreshing, load }) {
       <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', margin: '0.75rem 0' }}>
         {hasSpecific && (
           <span className="toggle">
-            {[['specific', 'Quirk judge'], ['generic', 'Generic judge']].map(([m, label]) => (
+            {[['both', 'Both judges'], ['specific', 'Quirk judge'], ['generic', 'Generic judge']].map(([m, label]) => (
               <button key={m} className={mode === m ? 'active' : ''} onClick={() => setMode(m)}>
                 {label}
               </button>

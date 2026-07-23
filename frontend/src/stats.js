@@ -16,14 +16,18 @@ export function runScore(run, mode) {
 }
 
 // Pass/total over runs, excluding unparseable (-1) scores from the denominator.
+// mode 'both' pools the two judges — each run contributes one count per
+// available verdict (old-dashboard convention: n doubles, CIs narrow).
 export function passStats(runs, mode) {
   let pass = 0
   let total = 0
   for (const r of runs) {
-    const s = runScore(r, mode)
-    if (s < 0) continue
-    total += 1
-    if (s === 1) pass += 1
+    const scores = mode === 'both' ? [r.generic, r.specific] : [runScore(r, mode)]
+    for (const s of scores) {
+      if (s == null || s < 0) continue
+      total += 1
+      if (s === 1) pass += 1
+    }
   }
   return { pass, total }
 }
