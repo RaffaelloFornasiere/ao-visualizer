@@ -43,8 +43,32 @@ def branch_sha(branch: str) -> str:
     raise KeyError(branch)
 
 
-def _cache_path(branch: str, sha: str) -> Path:
-    return CACHE_DIR / f"{HF_REPO.replace('/', '__')}__{branch}@{sha}.json"
+_report_oid_cache: dict[tuple[str, str], str] = {}  # (branch, sha) -> content oid
+_report_oid_lock = threading.Lock()
+
+
+def _report_oid(branch: str, sha: str) -> str:
+    """Content hash of analysis/report.json at a commit (LFS oid when present).
+
+    Lets the report cache survive commits that don't touch the report
+    (config/tag edits) — only actual report changes trigger a re-download.
+    """
+    key = (branch, sha)
+    with _report_oid_lock:
+        if key in _report_oid_cache:
+            return _report_oid_cache[key]
+    r = httpx.post(
+        f"https://huggingface.co/api/datasets/{HF_REPO}/paths-info/{sha}",
+        headers=_headers(), data={"paths": "analysis/report.json"}, timeout=30,
+    )
+    r.raise_for_status()
+    for f in r.json():
+        if f.get("path") == "analysis/report.json" and f.get("type") == "file":
+            oid = (f.get("lfs") or {}).get("oid") or f["oid"]
+            with _report_oid_lock:
+                _report_oid_cache[key] = oid
+            return oid
+    raise FileNotFoundError(f"No analysis/report.json on branch '{branch}'")
 
 
 _config_cache: dict[str, tuple[str, dict | None]] = {}  # branch -> (sha, config)
@@ -128,13 +152,19 @@ def fetch_split_files(branch: str, model: str) -> list[Path]:
 
 
 def fetch_report(branch: str, sha: str) -> dict:
-    """Report for a branch at a given sha, from disk cache or HF."""
-    cache = _cache_path(branch, sha)
+    """Report for a branch at a given sha, from disk cache or HF.
+
+    Cached by the report file's content oid, not the branch sha, so commits
+    that don't change the report (config edits, tag edits) are cache hits.
+    """
+    oid = _report_oid(branch, sha)
+    repo_key = HF_REPO.replace("/", "__")
+    cache = CACHE_DIR / f"{repo_key}__{branch}__report@{oid}.json"
     if cache.exists():
         with open(cache) as f:
             return json.load(f)
 
-    url = f"https://huggingface.co/datasets/{HF_REPO}/resolve/{branch}/analysis/report.json"
+    url = f"https://huggingface.co/datasets/{HF_REPO}/resolve/{sha}/analysis/report.json"
     with httpx.Client(follow_redirects=True, timeout=httpx.Timeout(600, connect=30)) as client:
         r = client.get(url, headers=_headers())
         if r.status_code == 404:
@@ -143,7 +173,9 @@ def fetch_report(branch: str, sha: str) -> dict:
         data = r.json()
 
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    for stale in CACHE_DIR.glob(f"{HF_REPO.replace('/', '__')}__{branch}@*.json"):
+    for stale in CACHE_DIR.glob(f"{repo_key}__{branch}__report@*.json"):
         stale.unlink(missing_ok=True)
+    for legacy in CACHE_DIR.glob(f"{repo_key}__{branch}@*.json"):
+        legacy.unlink(missing_ok=True)
     cache.write_bytes(r.content)
     return data
