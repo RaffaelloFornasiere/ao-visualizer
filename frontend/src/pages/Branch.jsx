@@ -61,7 +61,7 @@ export default function Branch() {
 function BranchView({ summary, branch, mode, setMode, refreshing, load }) {
   const { runs } = summary
   const [off, setOff] = useState(() => defaultOff(runs))
-  const [agg, setAgg] = useState('mean')
+  const [agg, setAgg] = useState('max')
   const [view, setView] = useState('table')
 
   const hasSpecific = useMemo(() => runs.some((r) => r.specific != null), [runs])
