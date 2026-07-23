@@ -25,17 +25,19 @@ export function buildStats({ summary, filteredRuns, allRuns, off, mode, models }
   }
 
   const families = {}
-  const byQuirk = new Map()
+  const famOf = Object.fromEntries(models.map((m) => [m.name, m.family || m.quirk]))
+  const byFamily = new Map()
   for (const r of filteredRuns) {
-    if (!byQuirk.has(r.quirk)) byQuirk.set(r.quirk, new Map())
-    const byModel = byQuirk.get(r.quirk)
+    const fam = famOf[r.model] ?? r.quirk
+    if (!byFamily.has(fam)) byFamily.set(fam, new Map())
+    const byModel = byFamily.get(fam)
     if (!byModel.has(r.model)) byModel.set(r.model, [])
     byModel.get(r.model).push(r)
   }
   const order = Object.fromEntries(models.map((m) => [m.name, m.plot_order]))
   const label = Object.fromEntries(models.map((m) => [m.name, m.plot_label]))
-  for (const quirk of [...byQuirk.keys()].sort()) {
-    const byModel = byQuirk.get(quirk)
+  for (const family of [...byFamily.keys()].sort()) {
+    const byModel = byFamily.get(family)
     const modelsOut = {}
     const names = [...byModel.keys()].sort(
       (a, b) => (order[a] ?? 999) - (order[b] ?? 999) || a.localeCompare(b)
@@ -43,16 +45,31 @@ export function buildStats({ summary, filteredRuns, allRuns, off, mode, models }
     for (const name of names) {
       const runs = byModel.get(name)
       const actKeys = {}
+      let best = null
       for (const ak of [...new Set(runs.map((r) => r.combo.act_key))].sort()) {
-        actKeys[ak] = block(runs.filter((r) => r.combo.act_key === ak), mode)
+        const akRuns = runs.filter((r) => r.combo.act_key === ak)
+        const layers = {}
+        const layerVals = [...new Set(akRuns.map((r) => r.combo.layer))].sort(
+          (a, b) => a - b
+        )
+        for (const l of layerVals) {
+          const b = block(akRuns.filter((r) => r.combo.layer === l), mode)
+          layers[l] = b
+          // Best single act_key × layer (ties → larger n), as in stats.aggregate
+          const acc = (x) => (x.n ? x.pass / x.n : -1)
+          if (!best || acc(b) > acc(best) || (acc(b) === acc(best) && b.n > best.n))
+            best = { act_key: ak, layer: l, ...b }
+        }
+        actKeys[ak] = { ...block(akRuns, mode), layers }
       }
       modelsOut[name] = {
         plot_label: label[name] ?? name,
         ...block(runs, mode),
+        best_layer: best,
         act_keys: actKeys,
       }
     }
-    families[quirk] = { ...block([...byModel.values()].flat(), mode), models: modelsOut }
+    families[family] = { ...block([...byModel.values()].flat(), mode), models: modelsOut }
   }
 
   return {
