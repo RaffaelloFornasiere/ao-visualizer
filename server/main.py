@@ -12,7 +12,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import hf, reports
+from . import hf, reports, verbalizations
 
 app = FastAPI(title="AO Visualizer")
 app.add_middleware(GZipMiddleware, minimum_size=1024)
@@ -48,6 +48,20 @@ def branches():
 def branch_summary(branch: str):
     entry = _entry_or_404(branch)
     return reports.summary(entry, hf.branch_config(branch, entry["sha"]))
+
+
+@app.get("/api/branch/{branch}/run/verbalizations")
+def branch_run_verbalizations(branch: str, path: str = Query(...)):
+    entry = _entry_or_404(branch)
+    run = entry["by_path"].get(path)
+    if run is None:
+        raise HTTPException(404, f"No run '{path}' on branch '{branch}'")
+    try:
+        return verbalizations.build(branch, run)
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e))
+    except httpx.HTTPError as e:
+        raise HTTPException(502, f"HuggingFace request failed: {e}")
 
 
 @app.get("/api/branch/{branch}/run")

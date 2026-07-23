@@ -7,6 +7,7 @@ report downloaded. Set HF_TOKEN for private repos.
 
 import json
 import os
+import re
 import threading
 from pathlib import Path
 
@@ -80,6 +81,50 @@ def branch_config(branch: str, sha: str) -> dict | None:
 def branch_tags(branch: str, sha: str) -> list[str]:
     config = branch_config(branch, sha) or {}
     return [str(t) for t in config.get("tags") or []]
+
+
+def list_data_files(branch: str) -> list[dict]:
+    """Files under data/ on a branch: [{path, oid, size}]. [] if none."""
+    r = httpx.get(
+        f"https://huggingface.co/api/datasets/{HF_REPO}/tree/{branch}/data",
+        headers=_headers(), timeout=30,
+    )
+    if r.status_code == 404:
+        return []
+    r.raise_for_status()
+    return [
+        {"path": f["path"], "oid": f["oid"], "size": f["size"]}
+        for f in r.json()
+        if f.get("type") == "file"
+    ]
+
+
+def fetch_split_files(branch: str, model: str) -> list[Path]:
+    """Local paths of the verbalizer parquet shard(s) for a model split.
+
+    Shards are named data/{split}-NNNNN-of-NNNNN.parquet; downloaded on
+    demand and cached by content oid (immune to unrelated branch commits).
+    """
+    pattern = re.compile(rf"^{re.escape(model)}-\d{{5}}-of-\d{{5}}\.parquet$")
+    files = [f for f in list_data_files(branch) if pattern.match(Path(f["path"]).name)]
+    if not files:
+        raise FileNotFoundError(
+            f"No verbalizer data (data/{model}-*.parquet) on branch '{branch}'"
+        )
+    out = []
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    for f in sorted(files, key=lambda f: f["path"]):
+        cache = CACHE_DIR / f"{HF_REPO.replace('/', '__')}__{f['oid']}__{Path(f['path']).name}"
+        if not cache.exists():
+            url = f"https://huggingface.co/datasets/{HF_REPO}/resolve/{branch}/{f['path']}"
+            with httpx.Client(follow_redirects=True, timeout=httpx.Timeout(600, connect=30)) as client:
+                r = client.get(url, headers=_headers())
+                r.raise_for_status()
+            tmp = cache.with_suffix(".part")
+            tmp.write_bytes(r.content)
+            tmp.rename(cache)
+        out.append(cache)
+    return out
 
 
 def fetch_report(branch: str, sha: str) -> dict:

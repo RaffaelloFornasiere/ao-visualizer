@@ -31,3 +31,9 @@ export function fetchRun(branch, path) {
     `/api/branch/${encodeURIComponent(branch)}/run?path=${encodeURIComponent(path)}`
   )
 }
+
+export function fetchVerbalizations(branch, path) {
+  return getJson(
+    `/api/branch/${encodeURIComponent(branch)}/run/verbalizations?path=${encodeURIComponent(path)}`
+  )
+}

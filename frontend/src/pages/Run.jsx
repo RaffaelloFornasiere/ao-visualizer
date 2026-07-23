@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { fetchRun } from '../api'
 import { ErrorNotice, Loading, RawMdToggle, ScoreBadge, TextBox } from '../components'
 import { groupPath } from '../combos'
+import Methodology from '../Methodology'
 
 export default function Run() {
   const { branch, '*': path } = useParams()
@@ -67,6 +68,8 @@ export default function Run() {
           </tr>
         </tbody>
       </table>
+
+      <Methodology branch={branch} path={path} />
 
       <h2>
         Identified quirk: <em>{run.identified_quirk || '(none)'}</em>
